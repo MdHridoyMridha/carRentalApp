@@ -1,0 +1,5 @@
+{
+  "name": "DriveEase - Car Rental App",
+  "description": "A modern, full-stack car rental application built with React, Tailwind CSS, and Supabase.",
+  "requestFramePermissions": []
+}
