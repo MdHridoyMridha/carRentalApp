@@ -46,49 +46,58 @@ export default function Home() {
   const carTypes = ['All', ...new Set(cars.map(car => car.type))];
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* Hero Section */}
-      <div className="bg-indigo-600 py-16 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-6 tracking-tight">
-            Find the Perfect Car for Your Next Adventure
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-100">
+
+      {/* HERO */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-200/40 via-purple-200/30 to-blue-200/40 blur-3xl" />
+
+        <div className="relative max-w-7xl mx-auto px-4 py-20 text-center">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-gray-900">
+            Find Your <span className="text-indigo-600">Perfect Ride</span>
           </h1>
-          <p className="text-indigo-100 text-lg max-w-2xl mx-auto mb-10">
-            Choose from thousands of cars in over 100 cities. Rent by the day, week, or month.
+          <p className="text-gray-600 max-w-2xl mx-auto mb-10 text-lg">
+            Explore premium cars with a modern experience. Fast booking, beautiful UI.
           </p>
 
-          {/* Search Bar */}
-          <div className="max-w-3xl mx-auto bg-white p-2 rounded-2xl shadow-2xl flex flex-col md:flex-row gap-2">
+          {/* SEARCH */}
+          <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl p-3 flex flex-col md:flex-row gap-3 shadow-2xl">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by car name or location..."
-                className="w-full pl-12 pr-4 py-4 rounded-xl focus:outline-none text-gray-700"
+                placeholder="Search cars or location..."
+                className="w-full pl-12 pr-4 py-4 rounded-xl bg-transparent focus:outline-none text-gray-800 placeholder-gray-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all">
+            <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-semibold transition-all shadow-lg hover:scale-105">
               Search
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+      {/* CONTENT */}
+      <div className="max-w-7xl mx-auto px-4 py-14">
+
+        {/* FILTER BAR */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Available Cars</h2>
-            <p className="text-gray-500 text-sm mt-1">Showing {filteredCars.length} cars matching your criteria</p>
+            <p className="text-gray-500 text-sm mt-1">
+              {filteredCars.length} cars found
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-white border border-gray-200 rounded-xl px-3 py-2">
-              <SlidersHorizontal className="h-4 w-4 text-gray-400 mr-2" />
+          <div className="flex flex-wrap gap-3">
+
+            {/* FILTER */}
+            <div className="flex items-center gap-2 bg-white shadow-md border border-gray-100 rounded-xl px-4 py-2 hover:shadow-lg transition">
+              <SlidersHorizontal className="h-4 w-4 text-gray-400" />
               <select
-                className="text-sm font-medium text-gray-700 focus:outline-none bg-transparent"
+                className="bg-transparent text-sm focus:outline-none text-gray-700"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
               >
@@ -98,41 +107,51 @@ export default function Home() {
               </select>
             </div>
 
-            <div className="flex items-center bg-white border border-gray-200 rounded-xl px-3 py-2">
+            {/* SORT */}
+            <div className="bg-white shadow-md border border-gray-100 rounded-xl px-4 py-2 hover:shadow-lg transition">
               <select
-                className="text-sm font-medium text-gray-700 focus:outline-none bg-transparent"
+                className="bg-transparent text-sm focus:outline-none text-gray-700"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="newest">Newest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
+                <option value="newest">Newest</option>
+                <option value="price-low">Low Price</option>
+                <option value="price-high">High Price</option>
               </select>
             </div>
           </div>
         </div>
 
+        {/* LOADING */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
-            <p className="text-gray-500 font-medium">Loading amazing cars...</p>
+          <div className="flex flex-col items-center justify-center py-32">
+            <Loader2 className="h-10 w-10 animate-spin text-indigo-500 mb-4" />
+            <p className="text-gray-500">Loading cars...</p>
           </div>
         ) : filteredCars.length > 0 ? (
+
+          /* GRID */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredCars.map(car => (
-              <CarCard key={car.id} car={car} />
+              <div className="transform hover:-translate-y-2 hover:scale-105 transition duration-300">
+                <div className="bg-white rounded-2xl p-2 shadow-lg hover:shadow-2xl border border-gray-100">
+                  <CarCard key={car.id} car={car} />
+                </div>
+              </div>
             ))}
           </div>
+
         ) : (
-          <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-gray-200">
-            <div className="bg-gray-50 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="h-8 w-8 text-gray-300" />
+
+          /* EMPTY */
+          <div className="text-center py-32">
+            <div className="mx-auto w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
+              <Search className="text-indigo-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">No cars found</h3>
-            <p className="text-gray-500 max-w-xs mx-auto mt-2">
-              Try adjusting your search or filters to find what you're looking for.
-            </p>
+            <h3 className="text-xl font-semibold text-gray-800">No Cars Found</h3>
+            <p className="text-gray-500 mt-2">Try different filters or keywords</p>
           </div>
+
         )}
       </div>
     </div>
