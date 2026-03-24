@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { Car, Booking, Profile } from '../types';
-import { Plus, Trash2, Edit2, Loader2, Package, Users as UsersIcon, User, Calendar, DollarSign, X, Car as CarIcon, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Package, Users as UsersIcon, Calendar, DollarSign, X, Car as CarIcon, Clock, AlertCircle } from 'lucide-react';
 
 export default function Admin() {
   const { profile, user } = useAuth();
@@ -11,7 +11,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cars' | 'bookings'>('cars');
+  const [activeTab, setActiveTab] = useState<'cars' | 'bookings'>('bookings');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
@@ -391,78 +391,114 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* Quick Access: Recent Bookings - Only show when on Bookings tab */}
-      {activeTab === 'bookings' && bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length > 0 && (
-        <div className="mb-12">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Recent Booking Requests</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bookings
-              .filter(b => b.status === 'pending' || b.status === 'confirmed')
-              .slice(0, 3)
-              .map((booking) => (
-                <div key={booking.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-indigo-50 p-2 rounded-xl">
-                        <User className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900">{booking.profiles?.full_name || 'User'}</p>
-                        <p className="text-xs text-gray-400">{booking.profiles?.email}</p>
-                      </div>
-                    </div>
+      {/* Quick Access: Recent Bookings */}
+      <div className="mb-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Recent Booking Requests</h2>
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className="text-sm text-indigo-600 font-bold hover:underline"
+          >
+            View All Bookings
+          </button>
+        </div>
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Dates</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {bookings.slice(0, 5).map((booking) => (
+                <tr key={booking.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-gray-900">{booking.profiles?.full_name || 'User'}</div>
+                    <div className="text-xs text-gray-400">{booking.profiles?.email}</div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{booking.cars?.name}</td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                      {booking.payment_method}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {booking.start_date} to {booking.end_date}
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 
+                      booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      booking.status === 'rented' ? 'bg-indigo-100 text-indigo-700' :
+                      booking.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                      'bg-amber-100 text-amber-700'
                     }`}>
                       {booking.status}
                     </span>
-                  </div>
-                  
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <CarIcon className="h-4 w-4 text-gray-400" />
-                      <span>{booking.cars?.name}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end space-x-2">
+                      {booking.status === 'confirmed' && (
+                        <button
+                          onClick={() => updateBookingStatus(booking.id, 'rented', booking.car_id)}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all"
+                        >
+                          Mark Rented
+                        </button>
+                      )}
+                      {booking.status === 'rented' && (
+                        <button
+                          onClick={() => updateBookingStatus(booking.id, 'completed', booking.car_id)}
+                          className="px-3 py-1 bg-gray-600 text-white rounded-lg text-xs font-bold hover:bg-gray-700 transition-all"
+                        >
+                          Complete
+                        </button>
+                      )}
+                      {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                        <div className="flex items-center gap-2">
+                          {confirmCancelId === booking.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => updateBookingStatus(booking.id, 'cancelled', booking.car_id)}
+                                className="px-2 py-1 bg-red-600 text-white rounded-lg text-[10px] font-bold hover:bg-red-700"
+                              >
+                                Yes, Cancel
+                              </button>
+                              <button
+                                onClick={() => setConfirmCancelId(null)}
+                                className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-[10px] font-bold hover:bg-gray-300"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmCancelId(booking.id)}
+                              className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                            >
+                              Cancel Order
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>{booking.start_date} to {booking.end_date}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
-                      <span className="text-gray-400 font-normal">Total:</span>
-                      <span>৳{booking.total_price}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {booking.status === 'confirmed' ? (
-                      <button
-                        onClick={() => updateBookingStatus(booking.id, 'rented', booking.car_id)}
-                        className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all"
-                      >
-                        Mark Rented
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => updateBookingStatus(booking.id, 'confirmed', booking.car_id)}
-                        className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all"
-                      >
-                        Confirm Request
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setConfirmCancelId(booking.id)}
-                      className="px-3 py-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
-          </div>
+              {bookings.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No recent bookings</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
