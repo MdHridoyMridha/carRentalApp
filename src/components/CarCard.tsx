@@ -37,7 +37,7 @@ export default function CarCard({ car }: CarCardProps) {
             </div>
           </div>
           <div className="text-right">
-            <span className="text-xl font-bold text-indigo-600">${car.price_per_day}</span>
+            <span className="text-xl font-bold text-indigo-600">৳{car.price_per_day}</span>
             <span className="text-gray-400 text-xs block">/ day</span>
           </div>
         </div>

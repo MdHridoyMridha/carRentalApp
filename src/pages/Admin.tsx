@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { Car, Booking, Profile } from '../types';
-import { Plus, Trash2, Edit2, Loader2, Package, Users as UsersIcon, Calendar, DollarSign, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Package, Users as UsersIcon, User, Calendar, DollarSign, X, Car as CarIcon, Clock, AlertCircle } from 'lucide-react';
 
 export default function Admin() {
   const { profile, user } = useAuth();
@@ -15,12 +15,16 @@ export default function Admin() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [confirmDeleteBookingId, setConfirmDeleteBookingId] = useState<string | null>(null);
+  const [confirmDeleteCarId, setConfirmDeleteCarId] = useState<string | null>(null);
   
   // Form State
   const [newCar, setNewCar] = useState({
     name: '',
     image_url: '',
     price_per_day: 0,
+    driver_fee: 0,
     location: '',
     type: 'Sedan',
     transmission: 'Automatic',
@@ -68,11 +72,11 @@ export default function Admin() {
         is_admin: true
       });
       if (error) throw error;
-      alert('Profile synced! If you still see the warning, run the SQL update in Supabase.');
+      showSuccess('Profile synced! If you still see the warning, run the SQL update in Supabase.');
       checkDbAdminStatus();
     } catch (error: any) {
       console.error('Error syncing profile:', error);
-      alert(`Failed to sync profile: ${error.message}`);
+      setError(`Failed to sync profile: ${error.message}`);
     }
   }
 
@@ -132,10 +136,10 @@ export default function Admin() {
       console.log('Admin: Raw profiles data:', profiles);
       console.log('Admin: Raw profiles error:', pError);
       
-      alert(`Debug info logged to console. Bookings count: ${data?.length || 0}. Error: ${error?.message || 'None'}`);
+      showSuccess(`Debug info logged to console. Bookings count: ${data?.length || 0}. Error: ${error?.message || 'None'}`);
     } catch (err: any) {
       console.error('Admin: Debug failed:', err);
-      alert(`Debug failed: ${err.message}`);
+      setError(`Debug failed: ${err.message}`);
     }
   };
 
@@ -153,12 +157,12 @@ export default function Admin() {
       showSuccess('Car added successfully!');
       fetchData();
       setNewCar({
-        name: '', image_url: '', price_per_day: 0, location: '', type: 'Sedan',
+        name: '', image_url: '', price_per_day: 0, driver_fee: 0, location: '', type: 'Sedan',
         transmission: 'Automatic', fuel_type: 'Petrol', seats: 5, description: ''
       });
     } catch (error: any) {
       console.error('Error adding car:', error);
-      alert(`Failed to add car: ${error.message || 'Unknown error'}`);
+      setError(`Failed to add car: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -172,6 +176,7 @@ export default function Admin() {
           name: editingCar.name,
           image_url: editingCar.image_url,
           price_per_day: editingCar.price_per_day,
+          driver_fee: editingCar.driver_fee,
           location: editingCar.location,
           type: editingCar.type,
           transmission: editingCar.transmission,
@@ -189,46 +194,80 @@ export default function Admin() {
       fetchData();
     } catch (error: any) {
       console.error('Error updating car:', error);
-      alert(`Failed to update car: ${error.message || 'Unknown error'}`);
+      setError(`Failed to update car: ${error.message || 'Unknown error'}`);
     }
   };
 
-  const updateBookingStatus = async (bookingId: string, status: string) => {
+  const updateBookingStatus = async (bookingId: string, status: string, carId?: string) => {
+    console.log(`Admin: Updating booking ${bookingId} to status: ${status}, carId: ${carId}`);
     try {
-      const { error } = await supabase
+      const { error: bookingError } = await supabase
         .from('bookings')
         .update({ status })
         .eq('id', bookingId);
 
-      if (error) throw error;
+      if (bookingError) {
+        console.error('Admin: Booking update error:', bookingError);
+        throw bookingError;
+      }
+
+      // Update car availability based on status
+      if (carId) {
+        console.log(`Admin: Updating car ${carId} availability for status: ${status}`);
+        if (status === 'rented') {
+          const { error: carError } = await supabase.from('cars').update({ availability: false }).eq('id', carId);
+          if (carError) console.error('Admin: Car update error (rented):', carError);
+        } else if (status === 'completed' || status === 'cancelled') {
+          const { error: carError } = await supabase.from('cars').update({ availability: true }).eq('id', carId);
+          if (carError) console.error('Admin: Car update error (completed/cancelled):', carError);
+        }
+      }
+
       showSuccess(`Booking ${status} successfully!`);
+      setConfirmCancelId(null);
       fetchData();
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Failed to update booking status');
+    } catch (error: any) {
+      console.error('Admin: Error updating booking status:', error);
+      setError(`Failed to update booking status: ${error.message || 'Unknown error'}`);
+      setConfirmCancelId(null);
     }
   };
 
-  const [deletingCarId, setDeletingCarId] = useState<string | null>(null);
+  const deleteBooking = async (id: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('bookings').delete().eq('id', id);
+      if (error) throw error;
+      showSuccess('Booking history deleted successfully!');
+      setConfirmDeleteBookingId(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error deleting booking:', error);
+      setError(`Failed to delete booking: ${error.message}`);
+      setConfirmDeleteBookingId(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const deleteCar = async (id: string) => {
     try {
       setLoading(true);
       console.log('Admin: Attempting to delete car:', id);
-      const { error, status } = await supabase.from('cars').delete().eq('id', id);
+      const { error } = await supabase.from('cars').delete().eq('id', id);
       
       if (error) {
         console.error('Delete error details:', error);
         throw error;
       }
       
-      console.log('Delete success, status:', status);
       showSuccess('Car deleted successfully!');
-      setDeletingCarId(null);
+      setConfirmDeleteCarId(null);
       fetchData();
     } catch (error: any) {
       console.error('Error deleting car:', error);
-      alert(`Failed to delete car: ${error.message || 'Check console for details'}`);
+      setError(`Failed to delete car: ${error.message || 'Unknown error'}`);
+      setConfirmDeleteCarId(null);
     } finally {
       setLoading(false);
     }
@@ -313,7 +352,8 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="bg-indigo-50 p-3 rounded-2xl">
@@ -338,18 +378,91 @@ export default function Admin() {
         </div>
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="bg-amber-50 p-3 rounded-2xl">
-              <DollarSign className="h-6 w-6 text-amber-600" />
+            <div className="bg-indigo-50 p-3 rounded-2xl">
+              <CarIcon className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Revenue</p>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Rented</p>
               <p className="text-2xl font-black text-gray-900">
-                ${bookings.reduce((sum, b) => sum + Number(b.total_price), 0).toLocaleString()}
+                {bookings.filter(b => b.status === 'rented').length}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Quick Access: Recent Bookings - Only show when on Bookings tab */}
+      {activeTab === 'bookings' && bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length > 0 && (
+        <div className="mb-12">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Recent Booking Requests</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {bookings
+              .filter(b => b.status === 'pending' || b.status === 'confirmed')
+              .slice(0, 3)
+              .map((booking) => (
+                <div key={booking.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-indigo-50 p-2 rounded-xl">
+                        <User className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{booking.profiles?.full_name || 'User'}</p>
+                        <p className="text-xs text-gray-400">{booking.profiles?.email}</p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {booking.status}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <CarIcon className="h-4 w-4 text-gray-400" />
+                      <span>{booking.cars?.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span>{booking.start_date} to {booking.end_date}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                      <span className="text-gray-400 font-normal">Total:</span>
+                      <span>৳{booking.total_price}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {booking.status === 'confirmed' ? (
+                      <button
+                        onClick={() => updateBookingStatus(booking.id, 'rented', booking.car_id)}
+                        className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all"
+                      >
+                        Mark Rented
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => updateBookingStatus(booking.id, 'confirmed', booking.car_id)}
+                        className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all"
+                      >
+                        Confirm Request
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setConfirmCancelId(booking.id)}
+                      className="px-3 py-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
@@ -360,14 +473,14 @@ export default function Admin() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-900">Manage Fleet</h2>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all flex items-center"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Car
-            </button>
-          </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all flex items-center"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Car
+              </button>
+            </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
             <table className="w-full text-left">
@@ -376,6 +489,7 @@ export default function Admin() {
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Price/Day</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Driver Fee</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
@@ -404,7 +518,8 @@ export default function Admin() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{car.type}</td>
-                      <td className="px-6 py-4 font-bold text-gray-900">${car.price_per_day}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">৳{car.price_per_day}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">৳{car.driver_fee}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           car.availability ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
@@ -424,7 +539,7 @@ export default function Admin() {
                             <Edit2 className="h-4 w-4" />
                           </button>
                           
-                          {deletingCarId === car.id ? (
+                          {confirmDeleteCarId === car.id ? (
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => deleteCar(car.id)}
@@ -433,7 +548,7 @@ export default function Admin() {
                                 Confirm
                               </button>
                               <button
-                                onClick={() => setDeletingCarId(null)}
+                                onClick={() => setConfirmDeleteCarId(null)}
                                 className="px-2 py-1 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 transition-all"
                               >
                                 Cancel
@@ -441,7 +556,7 @@ export default function Admin() {
                             </div>
                           ) : (
                             <button
-                              onClick={() => setDeletingCarId(car.id)}
+                              onClick={() => setConfirmDeleteCarId(car.id)}
                               className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -472,7 +587,10 @@ export default function Admin() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Contact/NID</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Driver</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Dates</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Total</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
@@ -496,15 +614,33 @@ export default function Admin() {
                         <div className="font-bold text-gray-900">{booking.profiles?.full_name || 'User'}</div>
                         <div className="text-xs text-gray-400">{booking.profiles?.email}</div>
                       </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{booking.phone_number || 'N/A'}</div>
+                        <div className="text-xs text-gray-400">NID: {booking.nid_number || 'N/A'}</div>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{booking.cars?.name}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                          {booking.payment_method}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          booking.with_driver ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {booking.with_driver ? 'With Driver' : 'Self Drive'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {booking.start_date} to {booking.end_date}
                       </td>
-                      <td className="px-6 py-4 font-bold text-gray-900">${booking.total_price}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">৳{booking.total_price}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 
                           booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          booking.status === 'rented' ? 'bg-indigo-100 text-indigo-700' :
+                          booking.status === 'completed' ? 'bg-gray-100 text-gray-700' :
                           'bg-amber-100 text-amber-700'
                         }`}>
                           {booking.status}
@@ -512,22 +648,75 @@ export default function Admin() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end space-x-2">
-                          {booking.status === 'pending' && (
+                          {booking.status === 'confirmed' && (
                             <button
-                              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                              className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all"
+                              onClick={() => updateBookingStatus(booking.id, 'rented', booking.car_id)}
+                              className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all"
                             >
-                              Confirm
+                              Mark Rented
                             </button>
                           )}
-                          {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                          {booking.status === 'rented' && (
                             <button
-                              onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                              className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                              onClick={() => updateBookingStatus(booking.id, 'completed', booking.car_id)}
+                              className="px-3 py-1 bg-gray-600 text-white rounded-lg text-xs font-bold hover:bg-gray-700 transition-all"
                             >
-                              Cancel
+                              Complete
                             </button>
                           )}
+                          {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                            <div className="flex items-center gap-2">
+                              {confirmCancelId === booking.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'cancelled', booking.car_id)}
+                                    className="px-2 py-1 bg-red-600 text-white rounded-lg text-[10px] font-bold hover:bg-red-700"
+                                  >
+                                    Yes, Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmCancelId(null)}
+                                    className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-[10px] font-bold hover:bg-gray-300"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmCancelId(booking.id)}
+                                  className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                                >
+                                  Cancel Order
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center">
+                            {confirmDeleteBookingId === booking.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => deleteBooking(booking.id)}
+                                  className="px-2 py-1 bg-red-600 text-white rounded-lg text-[10px] font-bold"
+                                >
+                                  Delete?
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteBookingId(null)}
+                                  className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-[10px] font-bold"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteBookingId(booking.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete History"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -574,13 +763,23 @@ export default function Admin() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Price per Day ($)</label>
+                <label className="text-sm font-bold text-gray-700">Price per Day (৳)</label>
                 <input
                   type="number"
                   required
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   value={newCar.price_per_day}
                   onChange={(e) => setNewCar({...newCar, price_per_day: Number(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">Driver Fee (৳/Day)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value={newCar.driver_fee}
+                  onChange={(e) => setNewCar({...newCar, driver_fee: Number(e.target.value)})}
                 />
               </div>
               <div className="space-y-2">
@@ -700,13 +899,23 @@ export default function Admin() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Price per Day ($)</label>
+                <label className="text-sm font-bold text-gray-700">Price per Day (৳)</label>
                 <input
                   type="number"
                   required
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   value={editingCar.price_per_day}
                   onChange={(e) => setEditingCar({...editingCar, price_per_day: Number(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">Driver Fee (৳/Day)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value={editingCar.driver_fee}
+                  onChange={(e) => setEditingCar({...editingCar, driver_fee: Number(e.target.value)})}
                 />
               </div>
               <div className="space-y-2">
@@ -838,7 +1047,7 @@ export default function Admin() {
             <button 
               onClick={() => {
                 console.log('Current Cars:', cars);
-                alert(`Logged ${cars.length} cars to console`);
+                showSuccess(`Logged ${cars.length} cars to console`);
               }}
               className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
             >
@@ -846,10 +1055,11 @@ export default function Admin() {
             </button>
             <button 
               onClick={async () => {
-                const { data, error } = await supabase.from('bookings').select('*, cars(*), profiles(*)');
+                const { data, error: bErr } = await supabase.from('bookings').select('*, cars(*), profiles(*)');
                 console.log('Raw Bookings Data:', data);
-                console.log('Bookings Error:', error);
-                alert(error ? `Error: ${error.message}` : `Found ${data?.length || 0} bookings. Check console.`);
+                console.log('Bookings Error:', bErr);
+                if (bErr) setError(`Error: ${bErr.message}`);
+                else showSuccess(`Found ${data?.length || 0} bookings. Check console.`);
               }}
               className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
             >

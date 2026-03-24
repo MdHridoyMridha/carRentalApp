@@ -13,6 +13,7 @@ export default function Login() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -32,7 +33,7 @@ export default function Login() {
           },
         });
         if (signUpError) throw signUpError;
-        alert('Check your email for the confirmation link!');
+        setSuccess('Check your email for the confirmation link!');
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -59,6 +60,13 @@ export default function Login() {
             {isSignUp ? 'Join DriveEase to start renting cars' : 'Sign in to manage your bookings'}
           </p>
         </div>
+
+        {success && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-emerald-600 font-medium">{success}</p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start space-x-3">

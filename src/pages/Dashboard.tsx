@@ -13,6 +13,7 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const [bookings, setBookings] = useState<BookingWithCar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) fetchBookings();
@@ -40,20 +41,35 @@ export default function Dashboard() {
 
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
 
-  const cancelBooking = async (bookingId: string) => {
+  const cancelBooking = async (bookingId: string, carId?: string) => {
+    console.log(`User: Cancelling booking ${bookingId}, carId: ${carId}`);
     try {
       setLoading(true);
-      const { error } = await supabase
+      const { error: bookingError } = await supabase
         .from('bookings')
         .update({ status: 'cancelled' })
         .eq('id', bookingId);
 
-      if (error) throw error;
+      if (bookingError) {
+        console.error('User: Booking cancel error:', bookingError);
+        throw bookingError;
+      }
+
+      // Also update car availability manually in case trigger is missing
+      if (carId) {
+        console.log(`User: Making car ${carId} available manually`);
+        const { error: carError } = await supabase
+          .from('cars')
+          .update({ availability: true })
+          .eq('id', carId);
+        if (carError) console.error('User: Car update error during cancel:', carError);
+      }
+
       setCancellingBookingId(null);
       fetchBookings();
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      alert('Failed to cancel booking');
+    } catch (error: any) {
+      console.error('User: Error cancelling booking:', error);
+      setError(`Failed to cancel booking: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -62,9 +78,9 @@ export default function Dashboard() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'bg-emerald-100 text-emerald-700';
-      case 'pending': return 'bg-amber-100 text-amber-700';
       case 'cancelled': return 'bg-red-100 text-red-700';
-      case 'completed': return 'bg-indigo-100 text-indigo-700';
+      case 'rented': return 'bg-indigo-100 text-indigo-700';
+      case 'completed': return 'bg-gray-100 text-gray-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -86,6 +102,16 @@ export default function Dashboard() {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 text-sm font-bold rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          {error}
+          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
+            <XCircle className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
@@ -118,6 +144,16 @@ export default function Dashboard() {
                       <MapPin className="h-4 w-4 mr-1" />
                       {booking.cars.location}
                     </div>
+                    <div className="mt-2 flex gap-2">
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        booking.with_driver ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {booking.with_driver ? 'With Driver' : 'Self Drive'}
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600">
+                        {booking.payment_method}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-8 pt-4 border-t border-gray-50">
@@ -141,15 +177,15 @@ export default function Dashboard() {
                 <div className="flex flex-col justify-between items-end gap-4">
                   <div className="text-right">
                     <span className="text-gray-400 text-sm block mb-1">Total Price</span>
-                    <span className="text-2xl font-black text-gray-900">${booking.total_price}</span>
+                    <span className="text-2xl font-black text-gray-900">৳{booking.total_price}</span>
                   </div>
 
-                  {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                  {booking.status === 'confirmed' && (
                     <div className="flex flex-col items-end gap-2">
                       {cancellingBookingId === booking.id ? (
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => cancelBooking(booking.id)}
+                            onClick={() => cancelBooking(booking.id, booking.car_id)}
                             className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-all"
                           >
                             Confirm Cancel

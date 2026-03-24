@@ -23,6 +23,7 @@ export interface Database {
           transmission: string
           fuel_type: string
           seats: number
+          driver_fee: number
         }
         Insert: {
           id?: string
@@ -37,6 +38,7 @@ export interface Database {
           transmission: string
           fuel_type: string
           seats: number
+          driver_fee?: number
         }
         Update: {
           id?: string
@@ -51,6 +53,7 @@ export interface Database {
           transmission?: string
           fuel_type?: string
           seats?: number
+          driver_fee?: number
         }
       }
       bookings: {
@@ -62,7 +65,11 @@ export interface Database {
           start_date: string
           end_date: string
           total_price: number
-          status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          payment_method: 'Cash on Delivery' | 'Card' | 'bKash'
+          status: 'confirmed' | 'cancelled' | 'completed' | 'rented'
+          phone_number: string | null
+          nid_number: string | null
+          with_driver: boolean
         }
         Insert: {
           id?: string
@@ -72,7 +79,11 @@ export interface Database {
           start_date: string
           end_date: string
           total_price: number
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          payment_method?: 'Cash on Delivery' | 'Card' | 'bKash'
+          status?: 'confirmed' | 'cancelled' | 'completed' | 'rented'
+          phone_number?: string | null
+          nid_number?: string | null
+          with_driver?: boolean
         }
         Update: {
           id?: string
@@ -82,7 +93,11 @@ export interface Database {
           start_date?: string
           end_date?: string
           total_price?: number
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          payment_method?: 'Cash on Delivery' | 'Card' | 'bKash'
+          status?: 'confirmed' | 'cancelled' | 'completed' | 'rented'
+          phone_number?: string | null
+          nid_number?: string | null
+          with_driver?: boolean
         }
       }
       profiles: {
