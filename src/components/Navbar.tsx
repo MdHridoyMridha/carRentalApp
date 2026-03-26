@@ -89,39 +89,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Quick Navigation (Always visible on mobile) */}
-      <div className="md:hidden border-t border-gray-50 bg-white/80 backdrop-blur-md overflow-x-auto no-scrollbar">
-        <div className="flex items-center justify-around px-2 py-3 min-w-max">
-          <Link 
-            to="/" 
-            className="flex flex-col items-center px-4 space-y-1"
-          >
-            <Car className="h-5 w-5 text-indigo-600" />
-            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">Browse</span>
-          </Link>
-          
-          {user && (
-            <Link 
-              to="/dashboard" 
-              className="flex flex-col items-center px-4 space-y-1"
-            >
-              <LayoutDashboard className="h-5 w-5 text-indigo-600" />
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">Bookings</span>
-            </Link>
-          )}
-          
-          {(profile?.is_admin || user?.email === 'hridoyhs369@gmail.com') && (
-            <Link 
-              to="/admin" 
-              className="flex flex-col items-center px-4 space-y-1"
-            >
-              <Settings className="h-5 w-5 text-indigo-600" />
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">Admin</span>
-            </Link>
-          )}
-        </div>
-      </div>
-
       {/* Mobile Menu (Drawer for Sign Out / Auth) */}
       {isOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white animate-in slide-in-from-top-2">
@@ -187,6 +154,44 @@ export default function Navbar() {
           </div>
         </div>
       )}
+      {/* Mobile Bottom Navigation Bar (Always visible on mobile) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          <Link 
+            to="/" 
+            className="flex flex-col items-center space-y-1 group"
+          >
+            <div className="p-2 rounded-xl group-hover:bg-indigo-50 transition-colors">
+              <Car className="h-6 w-6 text-indigo-600" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Browse</span>
+          </Link>
+          
+          {user && (
+            <Link 
+              to="/dashboard" 
+              className="flex flex-col items-center space-y-1 group"
+            >
+              <div className="p-2 rounded-xl group-hover:bg-indigo-50 transition-colors">
+                <LayoutDashboard className="h-6 w-6 text-indigo-600" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Bookings</span>
+            </Link>
+          )}
+          
+          {(profile?.is_admin || user?.email === 'hridoyhs369@gmail.com') && (
+            <Link 
+              to="/admin" 
+              className="flex flex-col items-center space-y-1 group"
+            >
+              <div className="p-2 rounded-xl group-hover:bg-indigo-50 transition-colors">
+                <Settings className="h-6 w-6 text-indigo-600" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Admin</span>
+            </Link>
+          )}
+        </div>
+      </div>
     </nav>
   );
 }

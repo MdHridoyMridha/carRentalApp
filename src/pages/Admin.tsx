@@ -288,11 +288,11 @@ export default function Admin() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-2">Manage your fleet and customer bookings</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+        <div className="w-full lg:w-auto">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">Admin Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-2">Manage your fleet and customer bookings</p>
           {successMessage && (
             <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold rounded-xl animate-in fade-in slide-in-from-top-2">
               {successMessage}
@@ -323,7 +323,7 @@ export default function Admin() {
           )}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
           <button
             onClick={fetchData}
             className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
@@ -331,10 +331,10 @@ export default function Admin() {
           >
             <Loader2 className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <div className="flex bg-gray-100 p-1 rounded-xl">
+          <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveTab('cars')}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              className={`px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${
                 activeTab === 'cars' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -342,7 +342,7 @@ export default function Admin() {
             </button>
             <button
               onClick={() => setActiveTab('bookings')}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              className={`px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${
                 activeTab === 'bookings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -403,8 +403,9 @@ export default function Admin() {
           </button>
         </div>
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
-            <thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[800px] md:min-w-full">
+              <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
@@ -497,6 +498,7 @@ export default function Admin() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -519,10 +521,11 @@ export default function Admin() {
             </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[800px] md:min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Type</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Price/Day</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Driver Fee</th>
@@ -605,6 +608,7 @@ export default function Admin() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       ) : (
@@ -619,10 +623,11 @@ export default function Admin() {
             </button>
           </div>
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[1000px] md:min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Contact/NID</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
@@ -760,6 +765,7 @@ export default function Admin() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
