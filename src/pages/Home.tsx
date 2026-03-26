@@ -57,7 +57,7 @@ export default function Home() {
             Find Your <span className="text-indigo-600">Perfect Ride</span>
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto mb-10 text-lg">
-            Explore premium cars with a modern experience. Fast booking, Luxury Experience.
+            Explore premium cars with a modern experience. Fast booking, Luxury Experience 🚙.
           </p>
 
           {/* SEARCH */}
