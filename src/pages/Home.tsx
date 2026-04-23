@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabase';
+import React, { useEffect, useState, useMemo } from 'react';
+import { ServiceFactory } from '../services/ServiceFactory';
+import { CarSearchStrategy, CarSortStrategy } from '../services/FilterStrategy';
 import { Car } from '../types';
 import CarCard from '../components/CarCard';
 import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
@@ -11,37 +12,33 @@ export default function Home() {
   const [filterType, setFilterType] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
 
+  // Initialization: Singleton through ServiceFactory
+  const carService = useMemo(() => ServiceFactory.getCarService(), []);
+  const filterStrategy = useMemo(() => new CarSearchStrategy(), []);
+  const sortStrategy = useMemo(() => new CarSortStrategy(), []);
+
   useEffect(() => {
     fetchCars();
-  }, []);
+  }, [carService]);
 
   async function fetchCars() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('cars')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCars(data || []);
+      // Using Service Pattern
+      const data = await carService.getCars();
+      setCars(data);
     } catch (error) {
-      console.error('Error fetching cars:', error);
+      // Error handling is partly handled in decorator, but we can add UI specifics here
     } finally {
       setLoading(false);
     }
   }
 
-  const filteredCars = cars.filter(car => {
-    const matchesSearch = car.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         car.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || car.type === filterType;
-    return matchesSearch && matchesType;
-  }).sort((a, b) => {
-    if (sortBy === 'price-low') return a.price_per_day - b.price_per_day;
-    if (sortBy === 'price-high') return b.price_per_day - a.price_per_day;
-    return 0;
-  });
+  // Using Strategy Pattern
+  const filteredCars = useMemo(() => {
+    const filtered = filterStrategy.filter(cars, { searchTerm, filterType });
+    return sortStrategy.sort(filtered, sortBy);
+  }, [cars, searchTerm, filterType, sortBy, filterStrategy, sortStrategy]);
 
   const carTypes = ['All', ...new Set(cars.map(car => car.type))];
 

@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { ServiceFactory } from '../services/ServiceFactory';
 import { useAuth } from '../AuthContext';
 import { Car } from '../types';
 import { Users, Fuel, Gauge, MapPin, Calendar, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { format, differenceInDays, addDays, isBefore, startOfToday } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 
 export default function CarDetails() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   
+  const carService = useMemo(() => ServiceFactory.getCarService(), []);
+  const bookingService = useMemo(() => ServiceFactory.getBookingService(), []);
+
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -25,18 +28,13 @@ export default function CarDetails() {
 
   useEffect(() => {
     if (id) fetchCar();
-  }, [id]);
+  }, [id, carService]);
 
   async function fetchCar() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('cars')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const data = await carService.getCarById(id!);
+      if (!data) throw new Error('Car not found');
       setCar(data);
     } catch (error) {
       console.error('Error fetching car:', error);
@@ -69,33 +67,16 @@ export default function CarDetails() {
     try {
       setBookingLoading(true);
       setError(null);
-      console.log('Booking attempt:', {
-        user_id: user.id,
-        car_id: id,
-        start_date: startDate,
-        end_date: endDate,
-        total_price: totalPrice,
-        payment_method: paymentMethod,
-        phone_number: phoneNumber,
-        nid_number: nidNumber
-      });
       
-      // Check for overlapping bookings (simplified check)
-      const { data: existingBookings, error: checkError } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('car_id', id)
-        .eq('status', 'confirmed')
-        .or(`and(start_date.lte.${endDate},end_date.gte.${startDate})`);
-
-      if (checkError) throw checkError;
+      // Using BookingService Strategy
+      const isAvailable = await bookingService.checkAvailability(id!, startDate, endDate);
       
-      if (existingBookings && existingBookings.length > 0) {
+      if (!isAvailable) {
         setError('This car is already booked for the selected dates.');
         return;
       }
 
-      const { error } = await supabase.from('bookings').insert({
+      await bookingService.createBooking({
         user_id: user.id,
         car_id: id!,
         start_date: startDate,
